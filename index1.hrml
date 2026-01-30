@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ミニ買い物リスト</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; margin: 24px; }
+    h1 { font-size: 20px; margin-bottom: 12px; }
+    input, button { padding: 8px; margin-right: 6px; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .name { min-width: 160px; }
+    .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .total { font-weight: 700; margin-top: 16px; }
+    .muted { color: #777; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>ミニ買い物リスト（ローカル保存）</h1>
+
+  <div>
+    <input id="name" placeholder="商品名（例：パズル）" />
+    <input id="price" type="number" placeholder="価格（円）" min="0" />
+    <input id="qty" type="number" placeholder="数量" min="1" value="1" />
+    <button id="add">追加</button>
+    <button id="clear">全削除</button>
+  </div>
+
+  <p class="muted">※このアプリはブラウザの localStorage に保存します（ページを閉じても残ります）。</p>
+
+  <ul id="list"></ul>
+  <div class="total">合計：<span id="sum">¥0</span></div>
+
+  <script>
+    const KEY = 'mini-shopping-list';
+    const $name = document.getElementById('name');
+    const $price = document.getElementById('price');
+    const $qty = document.getElementById('qty');
+    const $add = document.getElementById('add');
+    const $clear = document.getElementById('clear');
+    const $list = document.getElementById('list');
+    const $sum = document.getElementById('sum');
+
+    const load = () => JSON.parse(localStorage.getItem(KEY) || '[]');
+    const save = (items) => localStorage.setItem(KEY, JSON.stringify(items));
+
+    function render() {
+      const items = load();
+      $list.innerHTML = '';
+      let total = 0;
+
+      items.forEach((item, idx) => {
+        const li = document.createElement('li');
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = item.name;
+
+        const price = document.createElement('span');
+        price.textContent = `¥${item.price.toLocaleString()}`;
+
+        const qtyWrap = document.createElement('span');
+        const minus = document.createElement('button');
+        minus.textContent = '−';
+        const qty = document.createElement('span');
+        qty.textContent = item.qty;
+        const plus = document.createElement('button');
+        plus.textContent = '+';
+        qtyWrap.append(minus, qty, plus);
+
+        const sub = document.createElement('span');
+        sub.textContent = `小計: ¥${(item.price * item.qty).toLocaleString()}`;
+
+        const del = document.createElement('button');
+        del.textContent = '削除';
+
+        const right = document.createElement('div');
+        right.className = 'right';
+        right.append(price, qtyWrap, sub, del);
+
+        li.append(name, right);
+        $list.append(li);
+
+        total += item.price * item.qty;
+
+        minus.onclick = () => {
+          const data = load();
+          if (data[idx].qty > 1) {
+            data[idx].qty -= 1;
+            save(data); render();
+          }
+        };
+        plus.onclick = () => {
+          const data = load();
+          data[idx].qty += 1;
+          save(data); render();
+        };
+        del.onclick = () => {
+          const data = load();
+          data.splice(idx, 1);
+          save(data); render();
+        };
+      });
+
+      $sum.textContent = `¥${total.toLocaleString()}`;
+    }
+
+    $add.onclick = () => {
+      const name = $name.value.trim();
+      const price = parseInt($price.value, 10);
+      const qty = parseInt($qty.value, 10);
+      if (!name || isNaN(price) || isNaN(qty) || price < 0 || qty < 1) {
+        alert('入力を確認してください');
+        return;
+      }
+      const items = load();
+      items.push({ name, price, qty });
+      save(items);
+      $name.value = ''; $price.value = ''; $qty.value = 1;
+      render();
+    };
+
+    $clear.onclick = () => {
+      if (confirm('すべて削除しますか？')) {
+        localStorage.removeItem(KEY);
+        render();
+      }
+    };
+
+    render();
+  </script>
+</body>
+</html>
